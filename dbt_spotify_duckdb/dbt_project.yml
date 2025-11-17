@@ -32,7 +32,7 @@ clean-targets:         # directories to be removed by `dbt clean`
 models:
   dbt_spotify_duckdb:
     dim:
-      +schema: staging_dwh
+      +schema: dwh
       +materialized: view
 
     mart:
