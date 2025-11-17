@@ -31,6 +31,10 @@ clean-targets:         # directories to be removed by `dbt clean`
 # files using the `{{ config(...) }}` macro.
 models:
   dbt_spotify_duckdb:
-    # Config indicated by + and applies to all files under models/example/
-    example:
+    dim:
+      +schema: staging_dwh
+      +materialized: view
+
+    mart:
+      +schema: mart
       +materialized: view
