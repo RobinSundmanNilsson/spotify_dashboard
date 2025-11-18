@@ -211,3 +211,4 @@ __marimo__/
 
 # DuckDB Database
 spotify.duckdb
+*.duckdb
