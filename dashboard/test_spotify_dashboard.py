@@ -29,7 +29,9 @@ st.markdown("""
 # ============================================================
 @st.cache_resource
 def get_db_connection():
-    db_path = Path("data_warehouse/spotify.duckdb")
+    # Resolve path relative to repo root (dashboard/.. = project root)
+    repo_root = Path(__file__).resolve().parent.parent
+    db_path = repo_root / "data_warehouse" / "spotify.duckdb"
     if not db_path.exists():
         st.error(f"Database not found at {db_path}. Please run the data pipeline first!")
         st.stop()
@@ -60,7 +62,7 @@ def load_all_tracks():
         cover_image_url,
         cover_height,
         cover_width
-    FROM analytics_mart.mart_spotify_tracks
+    FROM main_mart.mart_spotify_tracks
     WHERE track_name IS NOT NULL
     ORDER BY popularity DESC
     """
@@ -151,7 +153,7 @@ def main():
         top_artists = (
             filtered_df.groupby(['main_artist_id', 'main_artist_name'], dropna=False)
             .agg(total_tracks=('track_id', 'count'),
-                 avg_popularity=('popularity', 'mean'))
+                avg_popularity=('popularity', 'mean'))
             .round(1)
             .sort_values(['total_tracks', 'avg_popularity'], ascending=[False, False])
             .reset_index()
