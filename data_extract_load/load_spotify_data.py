@@ -190,17 +190,30 @@ def run_pipeline(
 
 if __name__ == "__main__":
     # Queries:
-    # "" = ingen extra text, bara år + market + popularity-filter
-    # Du kan lägga till t.ex. "genre:pop", "genre:rock" osv senare.
-    queries = [""]
+    # Kör flera genrer + en helt öppen sökning för att få större urval (upp till 10k/träff)
+    queries = [
+        "",  # bred sökning (SE-marknaden)
+        "genre:pop",
+        "genre:rock",
+        "genre:hip-hop",
+        "genre:electronic",
+        "genre:indie",
+        "genre:metal",
+        "genre:jazz",
+        "genre:r&b",
+        "genre:house",
+        "genre:techno",
+        "genre:latin",
+        "genre:afrobeat",
+        "genre:classical",
+    ]
 
-    # År 2020 → nuvarande år
-    current_year = datetime.now().year
-    years = list(range(2020, current_year + 1))
+    # År 2015–2025 för bredare spektrum
+    years = list(range(2015, 2026))
 
     # Popularity-filter: 0–100.
-    # 70 är en rätt aggressiv nivå = bara ganska populära låtar.
-    min_popularity = 70
+    # 30 ger större volym men fortfarande bort de allra minst populära.
+    min_popularity = 30
 
     run_pipeline(
         queries=queries,
