@@ -7,11 +7,12 @@ import dagster as dg
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from data_extract_load.load_spotify_data import run_pipeline
+from data_extract_load.load_spotify_data import run_pipeline, run_artist_enrichment
 
 # Paths
 DUCKDB_PATH = PROJECT_ROOT / "data_warehouse" / "spotify.duckdb"
 DBT_PROJECT_DIR = PROJECT_ROOT / "dbt_spotify_duckdb"
+DBT_PROFILES_DIR = Path.home() / ".dbt"
 
 @dg.asset
 def load_spotify_to_duckdb(context: dg.AssetExecutionContext):
@@ -21,7 +22,7 @@ def load_spotify_to_duckdb(context: dg.AssetExecutionContext):
     context.log.info(f"Kör Spotify ETL, duckdb_path={DUCKDB_PATH}")
 
     queries = [
-        "",
+        "",  # bred
         "genre:pop",
         "genre:rock",
         "genre:hip-hop",
@@ -35,19 +36,44 @@ def load_spotify_to_duckdb(context: dg.AssetExecutionContext):
         "genre:latin",
         "genre:afrobeat",
         "genre:classical",
+        "genre:punk",
+        "genre:k-pop",
+        "genre:lofi",
+        "genre:trap",
+        "genre:drum and bass",
+        "genre:reggae",
+        "genre:country",
+        "genre:ambient",
+        "genre:soul",
+        "genre:disco",
+        "genre:funk",
+        "genre:blues",
+        "genre:folk",
+        "genre:deep house",
+        "genre:tech house",
+        "genre:progressive house",
+        "genre:trance",
+        "genre:swedish pop",
+        "genre:electro pop",
+        "genre:edm",
     ]
     years = list(range(2015, 2026))
-    min_popularity = 30
+    min_popularity = 0  # ta med allt, dedup i dbt hanterar dubbletter
+    markets = ["SE"]  # endast svensk marknad
 
     try:
-        run_pipeline(
-            queries=queries,
-            years=years,
-            duckdb_path=DUCKDB_PATH,
-            market="SE",
-            limit=50,
-            min_popularity=min_popularity,
-        )
+        for m in markets:
+            context.log.info(f"Kör Spotify ETL, duckdb_path={DUCKDB_PATH}, market={m}")
+            run_pipeline(
+                queries=queries,
+                years=years,
+                duckdb_path=DUCKDB_PATH,
+                market=m,
+                limit=50,
+                min_popularity=min_popularity,
+            )
+            context.log.info(f"Klart med market={m}")
+        run_artist_enrichment(duckdb_path=DUCKDB_PATH, max_artists=None)
     except Exception as exc:
         context.log.error(f"ETL misslyckades: {exc}")
         raise
@@ -60,7 +86,7 @@ def load_spotify_to_duckdb(context: dg.AssetExecutionContext):
 try:
     from dagster_dbt import DbtCliResource, dbt_assets
 
-    dbt_resource = DbtCliResource(project_dir=str(DBT_PROJECT_DIR))
+    dbt_resource = DbtCliResource(project_dir=str(DBT_PROJECT_DIR), profiles_dir=str(DBT_PROFILES_DIR))
 
     @dbt_assets(
         manifest=DBT_PROJECT_DIR / "target" / "manifest.json",

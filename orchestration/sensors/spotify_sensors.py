@@ -8,6 +8,7 @@ if job_dbt is not None:
     @dg.asset_sensor(
         asset_key=dg.AssetKey("load_spotify_to_duckdb"),
         job=job_dbt,
+        minimum_interval_seconds=60,  # polla var minut
     )
     def trigger_dbt_after_ingest(
         context: dg.SensorEvaluationContext,
