@@ -44,13 +44,15 @@ main_artist as (
         track_id,
         artist_id       as main_artist_id,
         artist_name     as main_artist_name,
-        artist_spotify_url as main_artist_spotify_url
+        artist_spotify_url as main_artist_spotify_url,
+        genres          as genres
     from (
         select
             track_id,
             artist_id,
             artist_name,
             artist_spotify_url,
+            genres,
             row_number() over (
                 partition by track_id
                 order by artist_id
@@ -92,6 +94,7 @@ select
     ma.main_artist_id,
     ma.main_artist_name,
     ma.main_artist_spotify_url,
+    ma.genres          as main_artist_genres,
 
     t.album_name,
     t.album_type,

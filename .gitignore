@@ -212,3 +212,6 @@ __marimo__/
 # DuckDB Database
 spotify.duckdb
 *.duckdb
+
+# Dagster
+.tmp_dagster*

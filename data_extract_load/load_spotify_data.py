@@ -1,11 +1,13 @@
 import os
 from pathlib import Path
 from datetime import datetime
+from typing import Iterable, List
 
 from dotenv import load_dotenv
 load_dotenv()
 
 import dlt
+import duckdb
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
@@ -19,6 +21,8 @@ DLT_DIR = CURRENT_FILE.parent
 PROJECT_ROOT = DLT_DIR.parent
 DATA_WAREHOUSE_DIR = PROJECT_ROOT / "data_warehouse"
 DUCKDB_PATH = DATA_WAREHOUSE_DIR / "spotify.duckdb"
+ARTIST_ENRICH_TABLE = "spotify_artists_enriched"
+PLAYLIST_TRACKS_TABLE = "spotify_playlist_tracks"
 
 
 # ============================================================
@@ -82,6 +86,8 @@ def spotify_search_tracks(
 
     offset = 0
     max_total = 10_000  # Spotify search hårdgräns per query
+    processed = 0
+    print(f"[DLT] Start search q='{base_q}' market={market} min_popularity={min_popularity}")
 
     while True:
         search_kwargs = {
@@ -114,6 +120,10 @@ def spotify_search_tracks(
             break
         if offset >= max_total:
             break
+
+        processed += len(items)
+        if processed % (limit * 5) == 0:
+            print(f"[DLT] q='{base_q}' market={market} processed ~{processed}/{total} (max 10k)")
 
 
 # ============================================================
@@ -185,6 +195,93 @@ def run_pipeline(
 
 
 # ============================================================
+#  Artist enrichment (genres/followers/popularity)
+# ============================================================
+
+def _batch(iterable: List[str], size: int) -> Iterable[List[str]]:
+    for i in range(0, len(iterable), size):
+        yield iterable[i:i + size]
+
+
+def fetch_artist_genres(artist_ids: list[str]):
+    """
+    Fetch genres/popularity/followers for a list of artist_ids using Spotify Artists API.
+    Returns generator of dicts ready for loading.
+    """
+    fetched_at = datetime.utcnow().isoformat()
+    for chunk in _batch(artist_ids, 50):  # Spotify allows 50 IDs per call
+        res = sp.artists(chunk) or {}
+        artists = res.get("artists", [])
+        for a in artists:
+            if not a:
+                continue
+            yield {
+                "artist_id": a.get("id"),
+                "artist_name": a.get("name"),
+                "genres": a.get("genres", []),
+                "popularity": a.get("popularity"),
+                "followers": (a.get("followers") or {}).get("total"),
+                "fetched_at": fetched_at,
+            }
+
+
+@dlt.resource(
+    table_name=ARTIST_ENRICH_TABLE,
+    write_disposition="append",
+    columns={
+        "artist_id": {"data_type": "text", "primary_key": True},
+        "genres": {"data_type": "json"},
+        "artist_name": {"data_type": "text"},
+        "popularity": {"data_type": "bigint"},
+        "followers": {"data_type": "bigint"},
+        "fetched_at": {"data_type": "text"},
+    }
+)
+def spotify_artists_resource(artist_ids: list[str]):
+    yield from fetch_artist_genres(artist_ids)
+
+
+def run_artist_enrichment(duckdb_path: Path = DUCKDB_PATH, max_artists: int | None = None):
+    """
+    Look at staging.raw_spotify_tracks__artists, find unseen artist_ids,
+    fetch genres via Spotify Artists API, and load into staging.spotify_artists_enriched.
+    """
+    if not duckdb_path.exists():
+        raise RuntimeError(f"DuckDB file missing at {duckdb_path}. Run track pipeline first.")
+
+    con = duckdb.connect(str(duckdb_path))
+
+    # Gather distinct artist IDs from staging
+    distinct_artist_ids = con.execute("SELECT DISTINCT id AS artist_id FROM staging.raw_spotify_tracks__artists").fetchall()
+    all_ids = [row[0] for row in distinct_artist_ids if row[0]]
+
+    # Exclude already enriched artists
+    table_exists = con.execute(
+        "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'staging' AND table_name = ?", [ARTIST_ENRICH_TABLE]
+    ).fetchone()[0] > 0
+    existing_ids: set[str] = set()
+    if table_exists:
+        existing_ids = {row[0] for row in con.execute(f"SELECT artist_id FROM staging.{ARTIST_ENRICH_TABLE}").fetchall()}
+
+    missing_ids = [aid for aid in all_ids if aid not in existing_ids]
+    if max_artists:
+        missing_ids = missing_ids[:max_artists]
+
+    if not missing_ids:
+        print("No new artists to enrich.")
+        return
+
+    pipeline = dlt.pipeline(
+        pipeline_name="spotify_tracks",
+        destination=dlt.destinations.duckdb(str(duckdb_path)),
+        dataset_name="staging",
+    )
+    load_info = pipeline.run(spotify_artists_resource(missing_ids))
+    print(f"Enriched {len(missing_ids)} artists.")
+    print(load_info)
+
+
+# ============================================================
 #  Main
 # ============================================================
 
@@ -206,15 +303,35 @@ if __name__ == "__main__":
         "genre:latin",
         "genre:afrobeat",
         "genre:classical",
+        "genre:punk",
+        "genre:k-pop",
+        "genre:lofi",
+        "genre:trap",
+        "genre:drum and bass",
+        "genre:reggae",
+        "genre:country",
+        "genre:ambient",
+        "genre:soul",
+        "genre:disco",
+        "genre:funk",
+        "genre:blues",
+        "genre:folk",
+        "genre:deep house",
+        "genre:tech house",
+        "genre:progressive house",
+        "genre:trance",
+        "genre:swedish pop",
+        "genre:electro pop",
+        "genre:edm",
     ]
 
-    # År 2015–2025 för bredare spektrum
+    # År 2015–2025
     years = list(range(2015, 2026))
 
     # Popularity-filter: 0–100.
-    # 30 ger större volym men fortfarande bort de allra minst populära.
-    min_popularity = 30
+    min_popularity = 0
 
+    # Endast svensk marknad (align med Dagster)
     run_pipeline(
         queries=queries,
         years=years,
