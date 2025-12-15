@@ -1,28 +1,30 @@
 # orchestration/assets/spotify_assets.py
 from pathlib import Path
+import os
 import sys
 import dagster as dg
 
-# Lägg till projektroten i PYTHONPATH
+# Add project root to PYTHONPATH
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from data_extract_load.load_spotify_data import run_pipeline, run_artist_enrichment
 
 # Paths
-DUCKDB_PATH = PROJECT_ROOT / "data_warehouse" / "spotify.duckdb"
+DEFAULT_DUCKDB_PATH = PROJECT_ROOT / "data_warehouse" / "spotify.duckdb"
+DUCKDB_PATH = Path(os.getenv("DUCKDB_PATH", str(DEFAULT_DUCKDB_PATH)))
 DBT_PROJECT_DIR = PROJECT_ROOT / "dbt_spotify_duckdb"
-DBT_PROFILES_DIR = Path.home() / ".dbt"
+DBT_PROFILES_DIR = Path(os.getenv("DBT_PROFILES_DIR", str(Path.home() / ".dbt")))
 
 @dg.asset
 def load_spotify_to_duckdb(context: dg.AssetExecutionContext):
     """
-    Kör DLT-pipelinen som laddar Spotify-data till DuckDB.
+    Run the DLT pipeline that loads Spotify data into DuckDB.
     """
-    context.log.info(f"Kör Spotify ETL, duckdb_path={DUCKDB_PATH}")
+    context.log.info(f"Running Spotify ETL, duckdb_path={DUCKDB_PATH}")
 
     queries = [
-        "",  # bred
+        "",  # broad catch-all
         "genre:pop",
         "genre:rock",
         "genre:hip-hop",
@@ -58,12 +60,12 @@ def load_spotify_to_duckdb(context: dg.AssetExecutionContext):
         "genre:edm",
     ]
     years = list(range(2015, 2026))
-    min_popularity = 0  # ta med allt, dedup i dbt hanterar dubbletter
-    markets = ["SE"]  # endast svensk marknad
+    min_popularity = 0  # include everything; dbt dedup handles duplicates
+    markets = ["SE"]  # Swedish market only
 
     try:
         for m in markets:
-            context.log.info(f"Kör Spotify ETL, duckdb_path={DUCKDB_PATH}, market={m}")
+            context.log.info(f"Running Spotify ETL, duckdb_path={DUCKDB_PATH}, market={m}")
             run_pipeline(
                 queries=queries,
                 years=years,
@@ -72,13 +74,13 @@ def load_spotify_to_duckdb(context: dg.AssetExecutionContext):
                 limit=50,
                 min_popularity=min_popularity,
             )
-            context.log.info(f"Klart med market={m}")
+            context.log.info(f"Finished market={m}")
         run_artist_enrichment(duckdb_path=DUCKDB_PATH, max_artists=None)
     except Exception as exc:
-        context.log.error(f"ETL misslyckades: {exc}")
+        context.log.error(f"ETL failed: {exc}")
         raise
 
-    context.log.info("ETL-körning klar.")
+    context.log.info("ETL run complete.")
     return {"duckdb_path": str(DUCKDB_PATH), "status": "success"}
 
 
@@ -92,10 +94,10 @@ try:
         manifest=DBT_PROJECT_DIR / "target" / "manifest.json",
     )
     def dbt_spotify_models(context: dg.AssetExecutionContext, dbt: DbtCliResource):
-        """Kör dbt build (run + test)"""
+        """Run dbt build (run + test)."""
         yield from dbt.cli(["build"], context=context).stream()
 
 except Exception as e:
-    dg.get_dagster_logger().warning(f"DBT-integration inaktiverad: {e}")
+    dg.get_dagster_logger().warning(f"DBT integration disabled: {e}")
     dbt_spotify_models = None
     dbt_resource = None

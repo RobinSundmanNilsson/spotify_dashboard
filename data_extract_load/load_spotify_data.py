@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 from typing import Iterable, List
+from functools import lru_cache
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -26,7 +27,7 @@ PLAYLIST_TRACKS_TABLE = "spotify_playlist_tracks"
 
 
 # ============================================================
-#  Spotify-klient (Client Credentials)
+#  Spotify client (Client Credentials)
 # ============================================================
 
 def make_spotify_client() -> spotipy.Spotify:
@@ -35,8 +36,8 @@ def make_spotify_client() -> spotipy.Spotify:
 
     if not client_id or not client_secret:
         raise RuntimeError(
-            "SPOTIPY_CLIENT_ID eller SPOTIPY_CLIENT_SECRET saknas i miljön. "
-            "Lägg dem i en .env i projektroten eller exportera dem innan du kör skriptet."
+            "SPOTIPY_CLIENT_ID or SPOTIPY_CLIENT_SECRET missing in the environment. "
+            "Add them to a .env in the project root or export them before running the script."
         )
 
     auth_manager = SpotifyClientCredentials(
@@ -46,11 +47,18 @@ def make_spotify_client() -> spotipy.Spotify:
     return spotipy.Spotify(auth_manager=auth_manager)
 
 
-sp = make_spotify_client()
+@lru_cache(maxsize=1)
+def _spotify_client() -> spotipy.Spotify:
+    """
+    Lazily create and cache the Spotify client so Dagster can import this module
+    even when the secrets are not present at process start. Secrets are required
+    when the asset actually executes.
+    """
+    return make_spotify_client()
 
 
 # ============================================================
-#  dlt-resource: Spotify search, per år, med popularity-filter
+#  dlt-resource: Spotify search per year with a popularity filter
 # ============================================================
 
 @dlt.resource(
@@ -68,13 +76,13 @@ def spotify_search_tracks(
     min_popularity: int | None = None,
 ):
     """
-    Hämtar tracks från Spotify Search API för ENT år, med pagination.
+    Fetch tracks from the Spotify Search API for a single year, with pagination.
 
-    - query:          fri text, t.ex. "" eller "genre:pop"
-    - year:           t.ex. 2020
+    - query:          free text, e.g., "" or "genre:pop"
+    - year:           e.g., 2020
     - limit:          1-50 (Spotify max 50)
-    - market:         t.ex. "SE" eller None
-    - min_popularity: 0-100, t.ex. 70 = bara ganska/populära låtar
+    - market:         e.g., "SE" or None
+    - min_popularity: 0-100, e.g., 70 to include only fairly popular tracks
     """
 
     limit = max(1, min(limit, 50))
@@ -85,9 +93,11 @@ def spotify_search_tracks(
         base_q = f"year:{year}"
 
     offset = 0
-    max_total = 10_000  # Spotify search hårdgräns per query
+    max_total = 10_000
     processed = 0
     print(f"[DLT] Start search q='{base_q}' market={market} min_popularity={min_popularity}")
+
+    sp = _spotify_client()
 
     while True:
         search_kwargs = {
@@ -111,7 +121,6 @@ def spotify_search_tracks(
         for t in items:
             pop = t.get("popularity", 0)
             if (min_popularity is None) or (pop >= min_popularity):
-                # bara yielda låtar som uppfyller popularity-kravet
                 yield t
 
         offset += limit
@@ -127,7 +136,7 @@ def spotify_search_tracks(
 
 
 # ============================================================
-#  dlt-source: loopa över år och queries
+#  dlt-source: loop over years and queries
 # ============================================================
 
 @dlt.source
@@ -139,8 +148,8 @@ def spotify_source(
     min_popularity: int | None = None,
 ):
     """
-    Bygger flera resources:
-    - en per (år, query) kombination.
+    Build multiple resources:
+    - one per (year, query) combination.
     """
     for year in years:
         for q in queries:
@@ -169,7 +178,7 @@ def run_pipeline(
     min_popularity: int | None = None,
 ):
     """
-    Kör dlt-pipelinen och laddar resultatet till DuckDB i projektroten.
+    Run the dlt pipeline and load results into DuckDB in the project root.
     """
     DATA_WAREHOUSE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -189,8 +198,8 @@ def run_pipeline(
 
     load_info = pipeline.run(src)
 
-    print("Pipeline körd.")
-    print(f"DuckDB-path: {duckdb_path}")
+    print("Pipeline finished.")
+    print(f"DuckDB path: {duckdb_path}")
     print(load_info)
 
 
@@ -208,8 +217,9 @@ def fetch_artist_genres(artist_ids: list[str]):
     Fetch genres/popularity/followers for a list of artist_ids using Spotify Artists API.
     Returns generator of dicts ready for loading.
     """
-    fetched_at = datetime.utcnow().isoformat()
-    for chunk in _batch(artist_ids, 50):  # Spotify allows 50 IDs per call
+    sp = _spotify_client()
+    fetched_at = datetime.now().isoformat()
+    for chunk in _batch(artist_ids, 50):
         res = sp.artists(chunk) or {}
         artists = res.get("artists", [])
         for a in artists:
@@ -287,9 +297,8 @@ def run_artist_enrichment(duckdb_path: Path = DUCKDB_PATH, max_artists: int | No
 
 if __name__ == "__main__":
     # Queries:
-    # Kör flera genrer + en helt öppen sökning för att få större urval (upp till 10k/träff)
     queries = [
-        "",  # bred sökning (SE-marknaden)
+        "",
         "genre:pop",
         "genre:rock",
         "genre:hip-hop",
@@ -325,13 +334,10 @@ if __name__ == "__main__":
         "genre:edm",
     ]
 
-    # År 2015–2025
     years = list(range(2015, 2026))
 
-    # Popularity-filter: 0–100.
     min_popularity = 0
 
-    # Endast svensk marknad (align med Dagster)
     run_pipeline(
         queries=queries,
         years=years,

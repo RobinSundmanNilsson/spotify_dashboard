@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  dwh_pipeline:
+    platform: linux/amd64
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: dockerfile.dwh
+    ports:
+      - "3000:3000"
+    # Local tag for the built image (override with PIPELINE_IMAGE if you want to pull from/push to ACR)
+    image: ${PIPELINE_IMAGE:-spotifyproject-pipeline:local}
+
+  dashboard:
+    platform: linux/amd64
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: dockerfile.dashboard
+    ports:
+      - "8501:8501"
+    # Local tag for the built image (override with DASHBOARD_IMAGE if you want to pull from/push to ACR)
+    image: ${DASHBOARD_IMAGE:-spotifyproject-dashboard:local}

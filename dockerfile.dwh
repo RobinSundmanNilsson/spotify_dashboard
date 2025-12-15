@@ -1,0 +1,17 @@
+FROM python:3.11
+
+WORKDIR /pipeline
+
+# Ensure local imports like `import orchestration` resolve correctly
+ENV PYTHONPATH=/pipeline
+
+# Install dependencies (pipeline + orchestration + spotify API)
+COPY requirements_mac.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Copy code
+COPY data_extract_load/ /pipeline/data_extract_load/
+COPY dbt_spotify_duckdb/ /pipeline/dbt_spotify_duckdb/
+COPY orchestration/ /pipeline/orchestration/
+
+CMD ["dagster", "dev", "-d", "/pipeline", "-f", "/pipeline/orchestration/definitions.py", "-h", "0.0.0.0", "-p", "3000"]

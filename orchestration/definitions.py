@@ -11,10 +11,11 @@ from orchestration.jobs import jobs, job_ingest
 from orchestration.sensors import sensors
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DUCKDB_PATH = PROJECT_ROOT / "data_warehouse" / "spotify.duckdb"
+DEFAULT_DUCKDB_PATH = PROJECT_ROOT / "data_warehouse" / "spotify.duckdb"
+DUCKDB_PATH = Path(os.getenv("DUCKDB_PATH", str(DEFAULT_DUCKDB_PATH)))
 
-# Gör DuckDB-path tillgänglig för dbt (profiles.yml)
-os.environ["DUCKDB_PATH"] = str(DUCKDB_PATH)
+# Make DuckDB path available to dbt (profiles.yml)
+os.environ.setdefault("DUCKDB_PATH", str(DUCKDB_PATH))
 
 # Assets
 assets = [load_spotify_to_duckdb]
