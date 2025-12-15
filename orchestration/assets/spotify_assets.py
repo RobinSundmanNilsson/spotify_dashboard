@@ -1,5 +1,6 @@
 # orchestration/assets/spotify_assets.py
 from pathlib import Path
+import os
 import sys
 import dagster as dg
 
@@ -10,9 +11,10 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from data_extract_load.load_spotify_data import run_pipeline, run_artist_enrichment
 
 # Paths
-DUCKDB_PATH = PROJECT_ROOT / "data_warehouse" / "spotify.duckdb"
+DEFAULT_DUCKDB_PATH = PROJECT_ROOT / "data_warehouse" / "spotify.duckdb"
+DUCKDB_PATH = Path(os.getenv("DUCKDB_PATH", str(DEFAULT_DUCKDB_PATH)))
 DBT_PROJECT_DIR = PROJECT_ROOT / "dbt_spotify_duckdb"
-DBT_PROFILES_DIR = Path.home() / ".dbt"
+DBT_PROFILES_DIR = Path(os.getenv("DBT_PROFILES_DIR", str(Path.home() / ".dbt")))
 
 @dg.asset
 def load_spotify_to_duckdb(context: dg.AssetExecutionContext):
