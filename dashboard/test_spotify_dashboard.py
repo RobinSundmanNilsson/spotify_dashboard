@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from datetime import datetime
 import math
+import html
 
 # ============================================================
 # Configuration
@@ -82,6 +83,97 @@ st.markdown("""
     .track-card { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; margin: 0.35rem 0; border: 1px solid var(--border); }
     .divider { border-top: 1px solid var(--border); margin: 14px 0; }
     .muted { color: var(--muted); }
+    /* Sidebar revamp */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, rgba(18,23,31,0.95), rgba(10,13,19,0.97)), var(--bg);
+        border-left: 1px solid var(--border);
+        box-shadow: -12px 0 38px rgba(0,0,0,0.45);
+    }
+    section[data-testid="stSidebar"] .block-container {
+        padding: 18px 18px 36px;
+    }
+    .sidebar-hero {
+        background: linear-gradient(140deg, rgba(29,185,84,0.2), rgba(9,12,17,0.9));
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 16px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 14px;
+    }
+    .sidebar-hero:after {
+        content: "";
+        position: absolute;
+        inset: -50% 60% 30% -40%;
+        background: radial-gradient(circle, rgba(51,226,140,0.18) 0%, transparent 60%);
+        transform: rotate(-12deg);
+    }
+    .sidebar-hero h3 { margin: 6px 0 6px; color: #e9fff3; }
+    .sidebar-hero p { margin: 0; color: var(--muted); }
+    .sidebar-chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+    .sidebar-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--border);
+        color: var(--text);
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .sidebar-divider { border-top: 1px dashed var(--border); margin: 12px 0; opacity: 0.7; }
+    .side-title { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.82rem; color: var(--muted); margin: 8px 0 4px; font-weight: 700; }
+    section[data-testid="stSidebar"] label { color: var(--text); font-weight: 600; }
+    section[data-testid="stSidebar"] .stRadio > label { color: var(--muted); font-weight: 600; letter-spacing: 0.02em; }
+    section[data-testid="stSidebar"] div[data-testid="stSlider"] {
+        background: linear-gradient(140deg, rgba(29,185,84,0.10), rgba(9,12,17,0.92));
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 12px 6px;
+        box-shadow: 0 12px 24px rgba(0,0,0,0.25);
+        margin-bottom: 8px;
+    }
+    section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+    }
+    section[data-testid="stSidebar"] .stSelectbox div[role="combobox"] { color: var(--text); }
+    section[data-testid="stSidebar"] .stTextInput input {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text);
+    }
+    section[data-testid="stSidebar"] .stCheckbox > label { color: var(--text); font-weight: 600; }
+    .filter-summary {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        background: linear-gradient(120deg, rgba(29,185,84,0.14), rgba(12,16,23,0.95));
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 10px 14px;
+        box-shadow: 0 18px 32px rgba(0,0,0,0.28);
+        margin: 12px 0 6px;
+    }
+    .chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(0,0,0,0.25);
+        border: 1px solid var(--border);
+        color: var(--text);
+        font-weight: 600;
+        font-size: 0.92rem;
+    }
+    .chip .dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        display: inline-block; background: var(--accent-2);
+    }
+    /* Default slider styling (no overrides) */
 </style>
 """, unsafe_allow_html=True)
 
@@ -249,22 +341,39 @@ def main():
         st.warning("No data available. Run the data pipeline first (dbt/dlt).")
         return
 
-    # Sidebar: view + filters
-    st.sidebar.markdown("## 🎛️ Filters & Navigation")
-    st.sidebar.markdown("Smarter slicers to focus on eras, moods, and visibility.")
-    view_mode = st.sidebar.radio("View", ["Overview", "Top artists", "All tracks"], index=0)
+    # Sidebar: view + filters (revamped)
+    st.sidebar.markdown(
+        """
+        <div class="sidebar-hero">
+            <div class="eyebrow" style="margin-bottom:4px;">Control deck</div>
+            <h3>Focus the view</h3>
+            <p>Dial in eras, visibility, and vibe. Filters sync across the dashboard.</p>
+            <div class="sidebar-chip-row">
+                <span class="sidebar-chip">🎧 Sweden</span>
+                <span class="sidebar-chip">Market sample</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.sidebar.markdown('<div class="side-title">View mode</div>', unsafe_allow_html=True)
+    view_mode = st.sidebar.radio("View mode", ["Overview", "Top artists", "All tracks"], index=0, label_visibility="collapsed")
+    st.sidebar.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
 
-    st.sidebar.markdown("### 📅 Year range")
+    st.sidebar.markdown('<div class="side-title">Release window</div>', unsafe_allow_html=True)
     min_year_available = int(df_all['release_year'].min())
     max_year_available = int(df_all['release_year'].max())
 
-    year_from, year_to = st.sidebar.slider(
-        "Span",
-        min_value=min_year_available,
-        max_value=max_year_available,
-        value=(min_year_available, max_year_available),
-        step=1,
-    )
+    release_box = st.sidebar.container()
+    with release_box:
+        year_from, year_to = st.slider(
+            "Release span",
+            min_value=min_year_available,
+            max_value=max_year_available,
+            value=(min_year_available, max_year_available),
+            step=1,
+            label_visibility="collapsed",
+        )
 
     # Validate range
     if year_from > year_to:
@@ -272,16 +381,14 @@ def main():
         return
 
     # Additional filters (grouped)
-    st.sidebar.markdown("### ⭐ Popularity")
-    popularity_filter = st.sidebar.selectbox("Level", ["All", "High (80+)", "Medium (50-79)", "Low (<50)"], index=0)
-
-    st.sidebar.markdown("### 🎧 Visibility")
+    st.sidebar.markdown('<div class="side-title">Popularity & visibility</div>', unsafe_allow_html=True)
+    popularity_filter = st.sidebar.selectbox("Popularity level", ["All", "High (80+)", "Medium (50-79)", "Low (<50)"], index=0, label_visibility="collapsed")
     recent_only = st.sidebar.checkbox("Recent releases (last 3 years)", value=False)
     previews_only = st.sidebar.checkbox("Has preview available", value=False)
 
-    st.sidebar.markdown("### 🔍 Search")
-    search_term = st.sidebar.text_input("Artist or track", placeholder="Type to filter...")
-    st.sidebar.caption("Sweden market sample. Filters apply everywhere.")
+    st.sidebar.markdown('<div class="side-title">Search</div>', unsafe_allow_html=True)
+    search_term = st.sidebar.text_input("Artist or track", placeholder="Type to filter...", label_visibility="collapsed")
+    st.sidebar.caption("Filters apply everywhere.")
 
     # ============================================================
     # Apply all filters
@@ -344,376 +451,37 @@ def main():
     """
     st.markdown(hero_html, unsafe_allow_html=True)
 
-    # Snapshot metrics
-    stats = [
-        ("Tracks", f"{len(filtered_df):,}", "Within selected period"),
-        ("Avg popularity", f"{filtered_df['popularity'].mean():.1f}", "0–100 scale"),
-        ("Unique artists", f"{filtered_df['main_artist_name'].nunique():,}", "Primary artists"),
+    # Active filter summary chips
+    pop_label = {
+        "All": "Popularity: any",
+        "High (80+)": "Popularity: 80+",
+        "Medium (50-79)": "Popularity: 50–79",
+        "Low (<50)": "Popularity: <50",
+    }.get(popularity_filter, "Popularity: any")
+    chip_items = [
+        f"Years {year_from}–{year_to}",
+        pop_label,
+        "Recent only" if recent_only else "Recent + classics",
+        "Preview available" if previews_only else "Preview optional",
+        f"View: {view_mode}",
+        "Market: SE",
     ]
-    st.markdown('<div class="metric-grid">', unsafe_allow_html=True)
-    for label, value, sub in stats:
-        st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-label">{label}</div>
-                <div class="metric-value">{value}</div>
-                <div class="metric-sub">{sub}</div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    st.markdown('</div>', unsafe_allow_html=True)
+    if search_term and search_term.strip():
+        chip_items.insert(1, f"Search: {html.escape(search_term.strip())}")
+    chips_html = "".join([f"<span class='chip'><span class='dot'></span>{item}</span>" for item in chip_items])
+    filter_summary_html = f"""
+    <div class="filter-summary">
+        <div class="metric-label" style="text-transform:uppercase; letter-spacing:0.08em;">Active filters</div>
+        {chips_html}
+    </div>
+    """
+    st.markdown(filter_summary_html, unsafe_allow_html=True)
 
-    # Highlight cards
-    highlight_col1, highlight_col2 = st.columns([2, 1])
-    with highlight_col1:
-        st.markdown("### 🔥 Most popular track right now")
-        top_track = filtered_df.sort_values('popularity', ascending=False).iloc[0]
-        top_card = f"""
-        <div class="panel" style="display:flex; gap:16px; align-items:center;">
-            {create_cover_html(top_track.get('cover_image_url', None), 90)}
-            <div>
-                <div class="pill">Popularity {int(top_track.get('popularity', 0))}/100</div>
-                <h3 style="margin:6px 0;">{top_track.get('track_name', '')}</h3>
-                <div class="muted">By {top_track.get('main_artist_name', '')}</div>
-                <div class="muted">Album: {top_track.get('album_name', '')} • {top_track.get('release_year', '')}</div>
-                <div style="margin-top:6px;">
-                    {"<a href='" + top_track['main_artist_spotify_url'] + "' target='_blank' style='color:var(--accent);text-decoration:none;'>Open in Spotify</a>" if top_track.get('main_artist_spotify_url') else ""}
-                </div>
-            </div>
-        </div>
-        """
-        st.markdown(top_card, unsafe_allow_html=True)
-
-    with highlight_col2:
-        st.markdown("### 🆕 Fresh releases")
-        latest_releases = (
-            filtered_df.dropna(subset=['release_year'])
-            .sort_values(['release_year', 'popularity'], ascending=[False, False])
-            .head(4)
-        )
-        for _, row in latest_releases.iterrows():
-            st.markdown(
-                f"""
-                <div class="track-card">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        {create_cover_html(row.get('cover_image_url', None), 46)}
-                        <div>
-                            <div><strong>{row.get('track_name', '')}</strong></div>
-                            <div class="muted">{row.get('main_artist_name', '')} • {row.get('release_year', '')}</div>
-                        </div>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-    # Quick insights to add value with limited data
-    st.markdown("### 💡 Quick insights")
-    insight_cols = st.columns(3)
-
-    # Highest avg popularity
-    with insight_cols[0]:
-        top_artist_avg = (
-            filtered_df.groupby('main_artist_name')['popularity']
-            .mean()
-            .sort_values(ascending=False)
-        )
-        if not top_artist_avg.empty:
-            artist_name = top_artist_avg.index[0]
-            artist_avg = top_artist_avg.iloc[0]
-            st.markdown(
-                f"""
-                <div class="metric-card">
-                    <div class="metric-label">Highest avg popularity</div>
-                    <div class="metric-value">{artist_name}</div>
-                    <div class="metric-sub">{artist_avg:.1f} / 100</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown(
-                '<div class="metric-card"><div class="metric-label">Highest avg popularity</div><div class="metric-sub">No artist data</div></div>',
-                unsafe_allow_html=True,
-            )
-
-    # Dominant format
-    with insight_cols[1]:
-        album_mode = filtered_df['album_type'].mode(dropna=True)
-        if len(album_mode) > 0:
-            share = (filtered_df['album_type'] == album_mode.iloc[0]).mean() * 100
-            st.markdown(
-                f"""
-                <div class="metric-card">
-                    <div class="metric-label">Dominant format</div>
-                    <div class="metric-value">{album_mode.iloc[0].title()}</div>
-                    <div class="metric-sub">{share:.0f}% of filtered tracks</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown(
-                '<div class="metric-card"><div class="metric-label">Dominant format</div><div class="metric-sub">No data</div></div>',
-                unsafe_allow_html=True,
-            )
-
-    # Recent share
-    with insight_cols[2]:
-        recent_share = (filtered_df['release_year'] >= max_year_available - 2).mean() * 100
-        st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-label">Recent share</div>
-                <div class="metric-value">{recent_share:.0f}%</div>
-                <div class="metric-sub">Released in last 3 years</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    # ============================================================
-    # Genre spotlight (best effort; only if genre columns exist)
-    # ============================================================
-    genre_col = next((c for c in ["genre", "genres", "artist_genres", "main_artist_genres", "primary_genre"] if c in filtered_df.columns), None)
-    st.markdown("## 🎶 Genres & mood")
-    if genre_col:
-        genre_stats = compute_genre_stats(filtered_df, genre_col)
-        if genre_stats.empty:
-            st.info("No genre values available in the current selection.")
-        else:
-            top_genres = genre_stats.head(12)
-            g1, g2 = st.columns([2, 1])
-            with g1:
-                fig_genre = px.bar(
-                    top_genres,
-                    x="score",
-                    y="genre_clean",
-                    orientation="h",
-                    title="Top genres (diminishing volume + popularity)",
-                    color="score",
-                    color_continuous_scale="Greens",
-                    labels={"genre_clean": "Genre", "score": "Score"},
-                )
-                fig_genre.update_layout(plot_bgcolor="rgba(0,0,0,0)", height=420, showlegend=False)
-                st.plotly_chart(fig_genre)
-            with g2:
-                lead = top_genres.iloc[0]
-                top5 = top_genres.head(5)
-                lead_html = f"""
-                <div class="panel" style="background:rgba(0,0,0,0.15); border:1px solid var(--border);">
-                    <div class="metric-label">Leading genre</div>
-                    <div class="metric-value" style="margin:4px 0;">{lead['genre_clean'].title()}</div>
-                    <div class="metric-sub">Tracks: {int(lead['tracks'])} • Artists: {int(lead['artists'])}</div>
-                    <div class="metric-sub">Avg popularity: {lead['pop_mean']:.1f} • Score: {lead['score']:.1f}</div>
-                    <div class="divider"></div>
-                    <div class="metric-label">Top 5</div>
-                    <ul style="padding-left:18px; margin:4px 0;">
-                """
-                for _, row in top5.iterrows():
-                    lead_html += f"<li>{row['genre_clean'].title()} • {int(row['tracks'])} tracks • pop {row['pop_mean']:.1f}</li>"
-                lead_html += "</ul></div>"
-                st.markdown(lead_html, unsafe_allow_html=True)
-    else:
-        st.info("No genre column found in the mart. Add a genre field to `main_mart.mart_spotify_tracks` (e.g., main artist genre) to enable this view.")
-
-    # ============================================================
-    # Trends Across Selected Period
-    # ============================================================
-    st.markdown("## 📈 Trends")
-    yearly_stats = filtered_df.groupby('release_year').agg({
-        'track_id': 'count',
-        'popularity': 'mean'
-    }).reset_index()
-    yearly_stats.columns = ['Year', 'Track Count', 'Avg Popularity']
-
-    tab1, tab2 = st.tabs(["Release trend", "Distributions"])
-    
-    with tab1:
-        fig_count = px.line(
-            yearly_stats, 
-            x='Year', 
-            y='Track Count',
-            title="Tracks Released per Year (in selected range)",
-            color_discrete_sequence=['#1DB954'],
-            markers=True
-        )
-        fig_count.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
-            xaxis_title="Release Year",
-            yaxis_title="Track Count"
-        )
-        st.plotly_chart(fig_count)
-
-    with tab2:
-        fig_pop = px.line(
-            yearly_stats, 
-            x='Year', 
-            y='Avg Popularity',
-            title="Average Popularity Trend (in selected range)",
-            color_discrete_sequence=['#1DB954'],
-            markers=True
-        )
-        fig_pop.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
-            xaxis_title="Release Year",
-            yaxis_title="Average Popularity"
-        )
-        st.plotly_chart(fig_pop)
-
-    # ============================================================
-    # Top Artists or All Tracks View
-    # ============================================================
-    if view_mode == "Top artists":
-        st.markdown("## 🎤 Top Artists")
-
-        # Aggregate per artist over the filtered range (avoid duplicate artist rows)
-        top_artists = (
-            filtered_df.groupby(['main_artist_id', 'main_artist_name'], dropna=False)
-            .agg(total_tracks=('track_id', 'count'),
-                avg_popularity=('popularity', 'mean'))
-            .round(1)
-            .sort_values(['total_tracks', 'avg_popularity'], ascending=[False, False])
-            .reset_index()
-        )
-        top_artists['computed_rank'] = range(1, len(top_artists) + 1)
-
-        # Display ranking count
-        st.subheader(f"📊 Found {len(top_artists)} unique artists")
-
-        # Top 15 Artists - Two column visualization
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("### 🏆 Top Artists by Track Count")
-            top_by_tracks = top_artists.nlargest(15, 'total_tracks')
-            fig_tracks = px.bar(
-                top_by_tracks,
-                x='total_tracks',
-                y='main_artist_name',
-                orientation='h',
-                title="Top 15 Artists (by number of tracks)",
-                color='total_tracks',
-                color_continuous_scale='Greens',
-                labels={'total_tracks': 'Track Count', 'main_artist_name': 'Artist'}
-            )
-            fig_tracks.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                showlegend=False,
-                height=500
-            )
-            st.plotly_chart(fig_tracks)
-
-        with col2:
-            st.markdown("### ⭐ Top Artists by Avg Popularity")
-            top_by_pop = top_artists.nlargest(15, 'avg_popularity')
-            fig_pop = px.bar(
-                top_by_pop,
-                x='avg_popularity',
-                y='main_artist_name',
-                orientation='h',
-                title="Top 15 Artists (by avg popularity)",
-                color='avg_popularity',
-                color_continuous_scale='Greens',
-                labels={'avg_popularity': 'Avg Popularity', 'main_artist_name': 'Artist'}
-            )
-            fig_pop.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                showlegend=False,
-                height=500
-            )
-            st.plotly_chart(fig_pop)
-
-        # Scatter plot: Track Count vs Avg Popularity
-        st.markdown("### 📈 Artist Performance Matrix")
-        fig_scatter = px.scatter(
-            top_artists,
-            x='total_tracks',
-            y='avg_popularity',
-            size='total_tracks',
-            hover_name='main_artist_name',
-            title="Artists: Track Count vs Average Popularity",
-            color='avg_popularity',
-            color_continuous_scale='Greens',
-            labels={'total_tracks': 'Number of Tracks', 'avg_popularity': 'Avg Popularity'}
-        )
-        fig_scatter.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
-            height=500
-        )
-        st.plotly_chart(fig_scatter)
-
-        # Full artist table
-        st.markdown("### 📋 All Artists (Ranked)")
-        st.dataframe(
-            top_artists[['computed_rank', 'main_artist_name', 'total_tracks', 'avg_popularity']].head(100),
-            width='stretch'
-        )
-
-    else:
-        # ============================================================
-        # Analytics & Distribution (shown for "All tracks" view)
-        # ============================================================
-        if view_mode == "All tracks":
-            st.markdown("## 🎵 Tracks & Analytics")
-        else:
-            st.markdown("## 📊 Analytics")
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.markdown("### Album Type Distribution")
-            album_dist = filtered_df['album_type'].value_counts()
-            if len(album_dist) > 0:
-                fig_pie = px.pie(
-                    values=album_dist.values, 
-                    names=album_dist.index, 
-                    title="Distribution by Album Type",
-                    color_discrete_sequence=px.colors.qualitative.Set3
-                )
-                st.plotly_chart(fig_pie)
-            else:
-                st.write("No album type distribution to show.")
-
-        with col2:
-            st.markdown("### Popularity Distribution")
-            pop_series = filtered_df['popularity'].dropna()
-            pop_series = pop_series[pop_series > 0]
-            if pop_series.empty:
-                st.write("No popularity data to show.")
-            else:
-                pop_df = (
-                    pop_series.value_counts()
-                    .sort_index()
-                    .reset_index()
-                )
-                pop_df.columns = ["Popularity", "Count"]
-                fig_hist = px.line(
-                    pop_df,
-                    x="Popularity",
-                    y="Count",
-                    markers=True,
-                    title="Popularity Distribution (pop > 0)",
-                    color_discrete_sequence=['#1DB954']
-                )
-                fig_hist.update_layout(
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    xaxis_title="Popularity",
-                    yaxis_title="Number of Tracks"
-                )
-                st.plotly_chart(fig_hist)
-
-        # ============================================================
-        # Top Tracks
-        # ============================================================
-        st.markdown("## 🎵 Top Tracks")
-        display_count = st.selectbox("Number of tracks to display:", [10, 25, 50, 100], index=0)
-        top_tracks = filtered_df.sort_values('popularity', ascending=False).head(display_count)
-
-        # Render cards in two columns, numbered
+    # Helper: render track cards in grid
+    def render_track_cards(track_df):
         cards_per_row = 2
         cols = st.columns(cards_per_row)
-        for idx, track in enumerate(top_tracks.itertuples(index=False), start=1):
+        for idx, track in enumerate(track_df.itertuples(index=False), start=1):
             col = cols[(idx - 1) % cards_per_row]
             if (idx - 1) % cards_per_row == 0 and idx != 1:
                 cols = st.columns(cards_per_row)
@@ -745,6 +513,361 @@ def main():
             """
             with col:
                 st.markdown(card_html, unsafe_allow_html=True)
+
+    # ============================================================
+    # View-specific rendering
+    # ============================================================
+    if view_mode == "Top artists":
+        st.markdown("## 🎤 Top Artists")
+
+        top_artists = (
+            filtered_df.groupby(['main_artist_id', 'main_artist_name'], dropna=False)
+            .agg(total_tracks=('track_id', 'count'), avg_popularity=('popularity', 'mean'))
+            .round(1)
+            .sort_values(['avg_popularity', 'total_tracks'], ascending=[False, False])
+            .reset_index()
+        )
+        top_artists['computed_rank'] = range(1, len(top_artists) + 1)
+
+        st.subheader(f"📊 Found {len(top_artists)} unique artists")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("### 🏆 Top Artists by Track Count")
+            top_by_tracks = top_artists.nlargest(15, 'total_tracks')
+            fig_tracks = px.bar(
+                top_by_tracks,
+                x='total_tracks',
+                y='main_artist_name',
+                orientation='h',
+                title="Top 15 Artists (by number of tracks)",
+                color='total_tracks',
+                color_continuous_scale='Greens',
+                labels={'total_tracks': 'Track Count', 'main_artist_name': 'Artist'}
+            )
+            fig_tracks.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                showlegend=False,
+                height=500,
+                yaxis=dict(autorange="reversed"),
+            )
+            st.plotly_chart(fig_tracks)
+
+        with col2:
+            st.markdown("### ⭐ Top Artists by Avg Popularity")
+            top_by_pop = top_artists.nlargest(15, 'avg_popularity')
+            fig_pop = px.bar(
+                top_by_pop,
+                x='avg_popularity',
+                y='main_artist_name',
+                orientation='h',
+                title="Top 15 Artists (by avg popularity)",
+                color='avg_popularity',
+                color_continuous_scale='Greens',
+                labels={'avg_popularity': 'Avg Popularity', 'main_artist_name': 'Artist'}
+            )
+            fig_pop.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                showlegend=False,
+                height=500,
+                yaxis=dict(autorange="reversed"),
+            )
+            st.plotly_chart(fig_pop)
+
+        st.markdown("### 📈 Artist Performance Matrix")
+        fig_scatter = px.scatter(
+            top_artists,
+            x='total_tracks',
+            y='avg_popularity',
+            size='total_tracks',
+            hover_name='main_artist_name',
+            title="Artists: Track Count vs Average Popularity",
+            color='avg_popularity',
+            color_continuous_scale='Greens',
+            labels={'total_tracks': 'Number of Tracks', 'avg_popularity': 'Avg Popularity'}
+        )
+        fig_scatter.update_layout(plot_bgcolor='rgba(0,0,0,0)', height=500)
+        st.plotly_chart(fig_scatter)
+
+    elif view_mode == "All tracks":
+        st.markdown("## 🎵 Tracks in view")
+        display_count = st.selectbox("Number of tracks to display:", [25, 50, 100, 200], index=0)
+        tracks_in_view = filtered_df.sort_values('popularity', ascending=False).head(display_count)
+        render_track_cards(tracks_in_view)
+
+        st.markdown("### 📊 Track analytics")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("Album Type Distribution")
+            album_dist = filtered_df['album_type'].value_counts()
+            if len(album_dist) > 0:
+                album_df = album_dist.reset_index()
+                album_df.columns = ["Album Type", "Count"]
+                fig_album = px.bar(
+                    album_df,
+                    x="Count",
+                    y="Album Type",
+                    orientation="h",
+                    title="Distribution by Album Type",
+                    color="Count",
+                    color_continuous_scale="Greens",
+                )
+                fig_album.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    showlegend=False,
+                    height=380,
+                    yaxis=dict(autorange="reversed"),
+                )
+                st.plotly_chart(fig_album)
+            else:
+                st.write("No album type distribution to show.")
+
+        with col2:
+            st.markdown("Popularity Distribution")
+            pop_series = filtered_df['popularity'].dropna()
+            pop_series = pop_series[pop_series > 0]
+            if pop_series.empty:
+                st.write("No popularity data to show.")
+            else:
+                pop_df = (
+                    pop_series.value_counts()
+                    .sort_index()
+                    .reset_index()
+                )
+                pop_df.columns = ["Popularity", "Count"]
+                fig_hist = px.line(
+                    pop_df,
+                    x="Popularity",
+                    y="Count",
+                    markers=True,
+                    title="Popularity Distribution (pop > 0)",
+                    color_discrete_sequence=['#1DB954']
+                )
+                fig_hist.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    xaxis_title="Popularity",
+                    yaxis_title="Number of Tracks",
+                    height=380,
+                )
+                st.plotly_chart(fig_hist)
+
+    else:
+        # Overview: rich story with metrics, highlights, genres, trends, and a small track spotlight
+        stats = [
+            ("Tracks", f"{len(filtered_df):,}", "Within selected period"),
+            ("Avg popularity", f"{filtered_df['popularity'].mean():.1f}", "0–100 scale"),
+            ("Unique artists", f"{filtered_df['main_artist_name'].nunique():,}", "Primary artists"),
+        ]
+        st.markdown('<div class="metric-grid">', unsafe_allow_html=True)
+        for label, value, sub in stats:
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-label">{label}</div>
+                    <div class="metric-value">{value}</div>
+                    <div class="metric-sub">{sub}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        highlight_col1, highlight_col2 = st.columns([2, 1])
+        with highlight_col1:
+            st.markdown("### 🔥 Most popular track right now")
+            top_track = filtered_df.sort_values('popularity', ascending=False).iloc[0]
+            top_card = f"""
+            <div class="panel" style="display:flex; gap:16px; align-items:center;">
+                {create_cover_html(top_track.get('cover_image_url', None), 90)}
+                <div>
+                    <div class="pill">Popularity {int(top_track.get('popularity', 0))}/100</div>
+                    <h3 style="margin:6px 0;">{top_track.get('track_name', '')}</h3>
+                    <div class="muted">By {top_track.get('main_artist_name', '')}</div>
+                    <div class="muted">Album: {top_track.get('album_name', '')} • {top_track.get('release_year', '')}</div>
+                    <div style="margin-top:6px;">
+                        {"<a href='" + top_track['main_artist_spotify_url'] + "' target='_blank' style='color:var(--accent);text-decoration:none;'>Open in Spotify</a>" if top_track.get('main_artist_spotify_url') else ""}
+                    </div>
+                </div>
+            </div>
+            """
+            st.markdown(top_card, unsafe_allow_html=True)
+
+        with highlight_col2:
+            st.markdown("### 🆕 Fresh releases")
+            latest_releases = (
+                filtered_df.dropna(subset=['release_year'])
+                .sort_values(['release_year', 'popularity'], ascending=[False, False])
+                .head(4)
+            )
+            for _, row in latest_releases.iterrows():
+                st.markdown(
+                    f"""
+                    <div class="track-card">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            {create_cover_html(row.get('cover_image_url', None), 46)}
+                            <div>
+                                <div><strong>{row.get('track_name', '')}</strong></div>
+                                <div class="muted">{row.get('main_artist_name', '')} • {row.get('release_year', '')}</div>
+                            </div>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+        st.markdown("### 💡 Quick insights")
+        insight_cols = st.columns(3)
+
+        with insight_cols[0]:
+            top_artist_avg = (
+                filtered_df.groupby('main_artist_name')['popularity']
+                .mean()
+                .sort_values(ascending=False)
+            )
+            if not top_artist_avg.empty:
+                artist_name = top_artist_avg.index[0]
+                artist_avg = top_artist_avg.iloc[0]
+                st.markdown(
+                    f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Highest avg popularity</div>
+                        <div class="metric-value">{artist_name}</div>
+                        <div class="metric-sub">{artist_avg:.1f} / 100</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    '<div class="metric-card"><div class="metric-label">Highest avg popularity</div><div class="metric-sub">No artist data</div></div>',
+                    unsafe_allow_html=True,
+                )
+
+        with insight_cols[1]:
+            album_mode = filtered_df['album_type'].mode(dropna=True)
+            if len(album_mode) > 0:
+                share = (filtered_df['album_type'] == album_mode.iloc[0]).mean() * 100
+                st.markdown(
+                    f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Dominant format</div>
+                        <div class="metric-value">{album_mode.iloc[0].title()}</div>
+                        <div class="metric-sub">{share:.0f}% of filtered tracks</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    '<div class="metric-card"><div class="metric-label">Dominant format</div><div class="metric-sub">No data</div></div>',
+                    unsafe_allow_html=True,
+                )
+
+        with insight_cols[2]:
+            recent_share = (filtered_df['release_year'] >= max_year_available - 2).mean() * 100
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-label">Recent share</div>
+                    <div class="metric-value">{recent_share:.0f}%</div>
+                    <div class="metric-sub">Released in last 3 years</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("## 🎶 Genres & mood")
+        genre_col = next((c for c in ["genre", "genres", "artist_genres", "main_artist_genres", "primary_genre"] if c in filtered_df.columns), None)
+        if genre_col:
+            genre_stats = compute_genre_stats(filtered_df, genre_col)
+            if genre_stats.empty:
+                st.info("No genre values available in the current selection.")
+            else:
+                top_genres = genre_stats.head(12)
+                g1, g2 = st.columns([2, 1])
+                with g1:
+                    fig_genre = px.bar(
+                        top_genres,
+                        x="score",
+                        y="genre_clean",
+                        orientation="h",
+                        title="Top genres (diminishing volume + popularity)",
+                        color="score",
+                        color_continuous_scale="Greens",
+                        labels={"genre_clean": "Genre", "score": "Score"},
+                    )
+                    fig_genre.update_layout(
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        height=420,
+                        showlegend=False,
+                        yaxis=dict(autorange="reversed"),
+                    )
+                    st.plotly_chart(fig_genre)
+                with g2:
+                    lead = top_genres.iloc[0]
+                    top5 = top_genres.head(5)
+                    lead_html = f"""
+                    <div class="panel" style="background:rgba(0,0,0,0.15); border:1px solid var(--border);">
+                        <div class="metric-label">Leading genre</div>
+                        <div class="metric-value" style="margin:4px 0;">{lead['genre_clean'].title()}</div>
+                        <div class="metric-sub">Tracks: {int(lead['tracks'])} • Artists: {int(lead['artists'])}</div>
+                        <div class="metric-sub">Avg popularity: {lead['pop_mean']:.1f} • Score: {lead['score']:.1f}</div>
+                        <div class="divider"></div>
+                        <div class="metric-label">Top 5</div>
+                        <ul style="padding-left:18px; margin:4px 0;">
+                    """
+                    for _, row in top5.iterrows():
+                        lead_html += f"<li>{row['genre_clean'].title()} • {int(row['tracks'])} tracks • pop {row['pop_mean']:.1f}</li>"
+                    lead_html += "</ul></div>"
+                    st.markdown(lead_html, unsafe_allow_html=True)
+        else:
+            st.info("No genre column found in the mart. Add a genre field to `main_mart.mart_spotify_tracks` (e.g., main artist genre) to enable this view.")
+
+        st.markdown("## 📈 Trends")
+        yearly_stats = filtered_df.groupby('release_year').agg({
+            'track_id': 'count',
+            'popularity': 'mean'
+        }).reset_index()
+        yearly_stats.columns = ['Year', 'Track Count', 'Avg Popularity']
+
+        tab1, tab2 = st.tabs(["Release trend", "Distributions"])
+        
+        with tab1:
+            fig_count = px.line(
+                yearly_stats, 
+                x='Year', 
+                y='Track Count',
+                title="Tracks Released per Year (in selected range)",
+                color_discrete_sequence=['#1DB954'],
+                markers=True
+            )
+            fig_count.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                xaxis_title="Release Year",
+                yaxis_title="Track Count"
+            )
+            st.plotly_chart(fig_count)
+
+        with tab2:
+            fig_pop = px.line(
+                yearly_stats, 
+                x='Year', 
+                y='Avg Popularity',
+                title="Average Popularity Trend (in selected range)",
+                color_discrete_sequence=['#1DB954'],
+                markers=True
+            )
+            fig_pop.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                xaxis_title="Release Year",
+                yaxis_title="Average Popularity"
+            )
+            st.plotly_chart(fig_pop)
+
+        st.markdown("## 🎵 Track spotlight")
+        display_count = st.selectbox("Number of tracks to display:", [10, 25, 50], index=0)
+        top_tracks = filtered_df.sort_values('popularity', ascending=False).head(display_count)
+        render_track_cards(top_tracks)
 
     # ============================================================
     # Raw data viewer
