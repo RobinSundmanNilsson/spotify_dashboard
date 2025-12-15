@@ -13,7 +13,7 @@ from orchestration.sensors import sensors
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DUCKDB_PATH = PROJECT_ROOT / "data_warehouse" / "spotify.duckdb"
 
-# Gör DuckDB-path tillgänglig för dbt (profiles.yml)
+# Make DuckDB path available to dbt (profiles.yml)
 os.environ["DUCKDB_PATH"] = str(DUCKDB_PATH)
 
 # Assets
