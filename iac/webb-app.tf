@@ -47,6 +47,8 @@ resource "azurerm_linux_web_app" "app" {
       # Use :latest so the app always pulls the most recent build.
       docker_image_name   = "spotifyproject-dashboard:latest"
       docker_registry_url = "https://${azurerm_container_registry.acr.login_server}"
+      docker_registry_username = azurerm_container_registry.acr.admin_username
+      docker_registry_password = azurerm_container_registry.acr.admin_password
     }
   }
 
@@ -60,9 +62,10 @@ resource "azurerm_linux_web_app" "app" {
   }
 
   app_settings = {
-    WEBSITES_PORT    = "8501"
-    DBT_PROFILES_DIR = "/mnt/data/.dbt"
-    DUCKDB_PATH      = "/mnt/data/spotify.duckdb"
+    WEBSITES_PORT                     = "8501"
+    WEBSITES_ENABLE_APP_SERVICE_STORAGE = "true"
+    DBT_PROFILES_DIR                  = "/mnt/data/.dbt"
+    DUCKDB_PATH                       = "/mnt/data/spotify.duckdb"
   }
 
   depends_on = [
