@@ -1,0 +1,10 @@
+FROM python:3.11-slim
+
+WORKDIR /app/dashboard
+
+COPY dashboard/ /app/dashboard/
+
+# Install only what the dashboard needs
+RUN pip install --no-cache-dir streamlit duckdb pandas plotly numpy python-dotenv
+
+CMD ["streamlit", "run", "spotify_dashboard.py", "--server.port=8501", "--server.address=0.0.0.0"]
