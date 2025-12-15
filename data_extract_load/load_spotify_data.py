@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 from typing import Iterable, List
+from functools import lru_cache
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -46,7 +47,14 @@ def make_spotify_client() -> spotipy.Spotify:
     return spotipy.Spotify(auth_manager=auth_manager)
 
 
-sp = make_spotify_client()
+@lru_cache(maxsize=1)
+def _spotify_client() -> spotipy.Spotify:
+    """
+    Lazily create and cache the Spotify client so Dagster can import this module
+    even when the secrets are not present at process start. Secrets are required
+    when the asset actually executes.
+    """
+    return make_spotify_client()
 
 
 # ============================================================
@@ -88,6 +96,8 @@ def spotify_search_tracks(
     max_total = 10_000
     processed = 0
     print(f"[DLT] Start search q='{base_q}' market={market} min_popularity={min_popularity}")
+
+    sp = _spotify_client()
 
     while True:
         search_kwargs = {
@@ -207,6 +217,7 @@ def fetch_artist_genres(artist_ids: list[str]):
     Fetch genres/popularity/followers for a list of artist_ids using Spotify Artists API.
     Returns generator of dicts ready for loading.
     """
+    sp = _spotify_client()
     fetched_at = datetime.now().isoformat()
     for chunk in _batch(artist_ids, 50):
         res = sp.artists(chunk) or {}
