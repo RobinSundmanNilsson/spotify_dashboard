@@ -29,6 +29,7 @@ resource "null_resource" "build_and_push_pipeline" {
         -t ${azurerm_container_registry.acr.name}.azurecr.io/spotifyproject-pipeline:latest \
         ../ --push
     EOT
+    interpreter = var.is_windows ? ["bash.exe", "-c"] : ["/bin/sh", "-c"]
   }
 
   depends_on = [azurerm_container_registry.acr]

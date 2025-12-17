@@ -23,3 +23,9 @@ variable "spotipy_client_secret" {
   type        = string
   description = "Spotify Client Secret for Spotipy."
 }
+
+variable "is_windows" {
+  description = "Set to true if running on Windows"
+  type        = bool
+  default     = false
+}
