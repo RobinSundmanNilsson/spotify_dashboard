@@ -21,6 +21,7 @@ resource "null_resource" "build_and_push_dashboard" {
         -t ${azurerm_container_registry.acr.name}.azurecr.io/spotifyproject-dashboard:latest \
         ../ --push
     EOT
+    interpreter = var.is_windows ? ["bash.exe", "-c"] : ["/bin/sh", "-c"]
   }
 
   depends_on = [azurerm_container_registry.acr]
