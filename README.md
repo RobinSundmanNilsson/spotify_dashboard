@@ -40,6 +40,15 @@ TF_VAR_spotipy_client_id="$SPOTIPY_CLIENT_ID" \
 TF_VAR_spotipy_client_secret="$SPOTIPY_CLIENT_SECRET" \
 terraform apply
 ```
+
+Terraform vars & secrets:
+- Terraform ignores `iac/terraform.tfvars` (see `.gitignore`); put your secrets there instead of exporting if you prefer. Example:
+```
+spotipy_client_id     = "..."
+spotipy_client_secret = "..."
+subscription_id       = "..."    # optional; falls back to env_variable.sh parsing
+is_windows            = true     # set true when running Terraform on Windows to use bash.exe for local-exec
+```
 What apply does:
 - Builds/pushes two images to ACR (`spotifyprojectcr<rand>.azurecr.io`): `spotifyproject-pipeline` and `spotifyproject-dashboard`.
 - Provisions Azure File share and mounts it to `/mnt/data` in both containers.
