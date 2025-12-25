@@ -2,6 +2,21 @@
 
 Modern end‑to‑end pipeline for Spotify analytics: extract with Spotipy + DLT, orchestrate with Dagster, transform with dbt into DuckDB, and serve insights with a Streamlit dashboard. Everything is containerized and provisioned to Azure via Terraform.
 
+## Project overview
+This repository is a full-stack data platform demo focused on reproducibility and clarity. It shows how to go from a public API to curated analytics and a live dashboard using modern data tooling, all packaged in containers and deployed with infrastructure as code. The result is a single, repeatable workflow that runs locally or in Azure.
+
+## Data flow
+1) Ingest Spotify data with Spotipy + DLT into a shared DuckDB file.
+2) Transform and model tables with dbt inside the same DuckDB file.
+3) Serve the curated tables through a Streamlit dashboard.
+4) Dagster schedules and coordinates the ingest and dbt runs.
+
+## Azure architecture
+- **ACR** stores the pipeline and dashboard images built on apply.
+- **ACI** runs the Dagster pipeline container.
+- **Azure Files** hosts the DuckDB file and dbt profiles and is mounted into both services.
+- **Azure Web App** runs the Streamlit dashboard container.
+
 ## What’s inside
 - **Extraction**: Spotipy + DLT fetch tracks/artists, cached into DuckDB.
 - **Orchestration**: Dagster (container) runs jobs and exposes the Dagster UI.
@@ -32,6 +47,23 @@ Dagster UI will be on localhost:3000, Streamlit on localhost:8501, DuckDB lives 
 
 ## Deploy to Azure with Terraform
 From `iac/`:
+1) Create `iac/terraform.tfvars` (gitignored) with the required values:
+```
+spotipy_client_id     = "..."
+spotipy_client_secret = "..."
+subscription_id       = "..."           # recommended to avoid the wrong subscription
+location              = "swedencentral" # change region if needed; changing it replaces resources
+prefix_app_name       = "spotifyproject" # optional
+is_windows            = false           # set true on Windows to use bash.exe for local-exec
+```
+2) Initialize and apply:
+```
+terraform init
+terraform plan
+terraform apply
+```
+
+If you prefer to keep secrets in `.env`, you can still export them and use TF_VAR:
 ```
 set -a
 source ../.env   # exports SPOTIPY_* locally
@@ -41,14 +73,6 @@ TF_VAR_spotipy_client_secret="$SPOTIPY_CLIENT_SECRET" \
 terraform apply
 ```
 
-Terraform vars & secrets:
-- Terraform ignores `iac/terraform.tfvars` (see `.gitignore`); put your secrets there instead of exporting if you prefer. Example:
-```
-spotipy_client_id     = "..."
-spotipy_client_secret = "..."
-subscription_id       = "..."    # optional; falls back to env_variable.sh parsing
-is_windows            = true     # set true when running Terraform on Windows to use bash.exe for local-exec
-```
 What apply does:
 - Builds/pushes two images to ACR (`spotifyprojectcr<rand>.azurecr.io`): `spotifyproject-pipeline` and `spotifyproject-dashboard`.
 - Provisions Azure File share and mounts it to `/mnt/data` in both containers.
@@ -58,6 +82,11 @@ Outputs to note after apply:
 - `dagster_url` – Dagster UI (run/monitor jobs)
 - `dashboard_url` – Streamlit app
 - `pipeline_container_group_name` – ACI name for troubleshooting
+
+## Dagster usage
+- Open `dagster_url` and enable the two automations (ingest_spotify_schedule & trigger_dbt_after_ingest) defined for the project.
+- Manually materialize `load_spotify_to_duckdb` once.
+- After that run, the remaining assets should materialize automatically.
 
 ## Project layout
 - `dockerfile.dwh` – Dagster/DLT/dbt image
@@ -73,14 +102,3 @@ Outputs to note after apply:
 - Spotipy credentials are injected via Terraform `TF_VAR_spotipy_*`; they never live in code or images.
 - If you change code, re‑apply Terraform (images rebuild thanks to triggers on source dirs).
 - Ensure Docker Desktop is running before `terraform apply` (buildx step).
-
-## Troubleshooting
-- **App Service “Application Error”**: Verify `docker_image_name` in Terraform uses just `repo:tag` and `docker_registry_url` is set (already configured). A bad registry prefix causes pull failures.
-- **Dagster import errors**: Confirm Spotipy env vars are set; Spotipy client now lazy‑loads, but missing envs will fail at run time.
-- **Image rebuild not happening**: `terraform taint null_resource.build_and_push_* && terraform apply` forces rebuild, but normal code changes should trigger rebuild via hashes.
-- **Missing .env**: `source ../.env` must contain KEY=VALUE lines only; no URLs on their own.
-
-## What to do next
-- Trigger a full materialization in Dagster; confirm dbt models are fresh.
-- Explore the dashboard via `dashboard_url`; filters are powered by the DuckDB file in Azure Files.
-- Add CI/CD (GitHub Actions) to run `terraform plan` and build images on PRs.

@@ -1,6 +1,6 @@
 variable "location" {
   description = "The location where resources will be deployed."
-  default     = "germanywestcentral"
+  default     = "swedencentral"
 }
 
 variable "prefix_app_name" {
