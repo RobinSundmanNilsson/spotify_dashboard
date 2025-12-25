@@ -2,6 +2,21 @@
 
 Modern end‑to‑end pipeline for Spotify analytics: extract with Spotipy + DLT, orchestrate with Dagster, transform with dbt into DuckDB, and serve insights with a Streamlit dashboard. Everything is containerized and provisioned to Azure via Terraform.
 
+## Project overview
+This repository is a full-stack data platform demo focused on reproducibility and clarity. It shows how to go from a public API to curated analytics and a live dashboard using modern data tooling, all packaged in containers and deployed with infrastructure as code. The result is a single, repeatable workflow that runs locally or in Azure.
+
+## Data flow
+1) Ingest Spotify data with Spotipy + DLT into a shared DuckDB file.
+2) Transform and model tables with dbt inside the same DuckDB file.
+3) Serve the curated tables through a Streamlit dashboard.
+4) Dagster schedules and coordinates the ingest and dbt runs.
+
+## Azure architecture
+- **ACR** stores the pipeline and dashboard images built on apply.
+- **ACI** runs the Dagster pipeline container.
+- **Azure Files** hosts the DuckDB file and dbt profiles and is mounted into both services.
+- **Azure Web App** runs the Streamlit dashboard container.
+
 ## What’s inside
 - **Extraction**: Spotipy + DLT fetch tracks/artists, cached into DuckDB.
 - **Orchestration**: Dagster (container) runs jobs and exposes the Dagster UI.
@@ -87,14 +102,3 @@ Outputs to note after apply:
 - Spotipy credentials are injected via Terraform `TF_VAR_spotipy_*`; they never live in code or images.
 - If you change code, re‑apply Terraform (images rebuild thanks to triggers on source dirs).
 - Ensure Docker Desktop is running before `terraform apply` (buildx step).
-
-## Troubleshooting
-- **App Service “Application Error”**: Verify `docker_image_name` in Terraform uses just `repo:tag` and `docker_registry_url` is set (already configured). A bad registry prefix causes pull failures.
-- **Dagster import errors**: Confirm Spotipy env vars are set; Spotipy client now lazy‑loads, but missing envs will fail at run time.
-- **Image rebuild not happening**: `terraform taint null_resource.build_and_push_* && terraform apply` forces rebuild, but normal code changes should trigger rebuild via hashes.
-- **Missing .env**: `source ../.env` must contain KEY=VALUE lines only; no URLs on their own.
-
-## What to do next
-- Trigger a full materialization in Dagster; confirm dbt models are fresh.
-- Explore the dashboard via `dashboard_url`; filters are powered by the DuckDB file in Azure Files.
-- Add CI/CD (GitHub Actions) to run `terraform plan` and build images on PRs.
