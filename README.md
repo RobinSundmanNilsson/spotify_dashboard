@@ -32,6 +32,23 @@ Dagster UI will be on localhost:3000, Streamlit on localhost:8501, DuckDB lives 
 
 ## Deploy to Azure with Terraform
 From `iac/`:
+1) Create `iac/terraform.tfvars` (gitignored) with the required values:
+```
+spotipy_client_id     = "..."
+spotipy_client_secret = "..."
+subscription_id       = "..."           # recommended to avoid the wrong subscription
+location              = "swedencentral" # change region if needed; changing it replaces resources
+prefix_app_name       = "spotifyproject" # optional
+is_windows            = false           # set true on Windows to use bash.exe for local-exec
+```
+2) Initialize and apply:
+```
+terraform init
+terraform plan
+terraform apply
+```
+
+If you prefer to keep secrets in `.env`, you can still export them and use TF_VAR:
 ```
 set -a
 source ../.env   # exports SPOTIPY_* locally
@@ -41,14 +58,6 @@ TF_VAR_spotipy_client_secret="$SPOTIPY_CLIENT_SECRET" \
 terraform apply
 ```
 
-Terraform vars & secrets:
-- Terraform ignores `iac/terraform.tfvars` (see `.gitignore`); put your secrets there instead of exporting if you prefer. Example:
-```
-spotipy_client_id     = "..."
-spotipy_client_secret = "..."
-subscription_id       = "..."    # optional; falls back to env_variable.sh parsing
-is_windows            = true     # set true when running Terraform on Windows to use bash.exe for local-exec
-```
 What apply does:
 - Builds/pushes two images to ACR (`spotifyprojectcr<rand>.azurecr.io`): `spotifyproject-pipeline` and `spotifyproject-dashboard`.
 - Provisions Azure File share and mounts it to `/mnt/data` in both containers.
@@ -58,6 +67,11 @@ Outputs to note after apply:
 - `dagster_url` – Dagster UI (run/monitor jobs)
 - `dashboard_url` – Streamlit app
 - `pipeline_container_group_name` – ACI name for troubleshooting
+
+## Dagster usage
+- Open `dagster_url` and enable the two automations (ingest_spotify_schedule & trigger_dbt_after_ingest) defined for the project.
+- Manually materialize `load_spotify_to_duckdb` once.
+- After that run, the remaining assets should materialize automatically.
 
 ## Project layout
 - `dockerfile.dwh` – Dagster/DLT/dbt image
