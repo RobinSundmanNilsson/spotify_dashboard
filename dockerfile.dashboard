@@ -3,6 +3,7 @@ FROM python:3.11-slim
 WORKDIR /app/dashboard
 
 COPY dashboard/ /app/dashboard/
+COPY .streamlit/ /app/dashboard/.streamlit/
 
 # Install only what the dashboard needs
 RUN pip install --no-cache-dir streamlit duckdb pandas plotly numpy python-dotenv
