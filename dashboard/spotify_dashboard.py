@@ -32,6 +32,7 @@ st.markdown("""
         --text: #e7f6ee;
         --muted: #9fb2c5;
         --border: rgba(255, 255, 255, 0.08);
+        color-scheme: dark;
     }
     html, body, [class*="css"]  {
         font-family: 'Space Grotesk', 'Manrope', sans-serif;
