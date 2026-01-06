@@ -48,19 +48,27 @@ This repo shows a full data platform from API to dashboard. It is meant to be si
   - Local: `./data_warehouse/spotify.duckdb`
   - Azure: Azure Files mounted at `/mnt/data/spotify.duckdb`
 
-## Local (Docker Compose)
+## Run the app (local)
 1) Create a `.env` in the repo root (KEY=VALUE):
 ```
 SPOTIPY_CLIENT_ID=...
 SPOTIPY_CLIENT_SECRET=...
 SPOTIPY_REDIRECT_URI=https://localhost:8501
 ```
-2) Run:
+2) Start the pipeline container:
 ```
-docker-compose up --build
+docker-compose up --build dwh_pipeline
 ```
-Dagster UI: localhost:3000, Streamlit: localhost:8501, DuckDB file (local): `./data_warehouse/spotify.duckdb`.
-Compose mounts `./data_warehouse` to `/mnt/data` and uses `iac/assets/profiles.yml` for dbt.
+3) Open Dagster at localhost:3000.
+4) Turn on automations `ingest_spotify_schedule` and `trigger_dbt_after_ingest`.
+5) Materialize asset `load_spotify_to_duckdb` once.
+6) Wait until dlt/dbt finishes and all assets are materialized.
+7) Start the dashboard container:
+```
+docker-compose up --build dashboard
+```
+8) Open Streamlit at localhost:8501.
+Local DuckDB file: `./data_warehouse/spotify.duckdb` (mounted to `/mnt/data` in containers). dbt uses `iac/assets/profiles.yml`.
 
 ## Deploy to Azure with Terraform
 From `iac/`:
@@ -90,10 +98,19 @@ Outputs to note after apply:
 - `dashboard_url` - Streamlit app
 - `pipeline_container_group_name` - ACI name for troubleshooting
 
-## Dagster usage
-- Open `dagster_url` and enable the two automations: `ingest_spotify_schedule` and `trigger_dbt_after_ingest`.
-- Run `load_spotify_to_duckdb` once.
-- After that, the rest should run automatically.
+## Run the app (Azure)
+1) After `terraform apply`, open `dagster_url` provided by Azure. If you use the container IP directly, add `:3000` for the Dagster UI.
+2) Turn on automations `ingest_spotify_schedule` and `trigger_dbt_after_ingest`.
+3) Materialize asset `load_spotify_to_duckdb` once.
+4) Wait until dlt/dbt finishes and all assets are materialized.
+5) Open `dashboard_url` provided by Azure.
+
+## Adjust what data is pulled from Spotify
+Edit `orchestration/assets/spotify_assets.py`:
+- `queries` controls genres/keywords.
+- `years` controls the year range.
+- `markets` controls the market (e.g. "SE").
+- `limit` and `min_popularity` control volume and filtering.
 
 ## Project layout
 - `dockerfile.dwh` - Docker image for Dagster/DLT/dbt
