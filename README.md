@@ -5,14 +5,11 @@ End-to-end pipeline for Spotify analytics. Spotipy + DLT fetch data, Dagster run
 ## Project overview
 This repo shows a full data platform from API to dashboard. It is meant to be simple, clear, and repeatable. You can run it locally or deploy it to Azure.
 
-## Dashboard screenshots
-![Dashboard view 1](assets/dashboard_1.png)
-
-![Dashboard view 2](assets/dashboard_2.png)
-
-![Dashboard view 3](assets/dashboard_3.png)
-
-![Dashboard view 4](assets/dashboard_4.png)
+## Dashboard preview
+|  |  |
+| --- | --- |
+| ![Dashboard view 1](assets/dashboard_1.png) | ![Dashboard view 2](assets/dashboard_2.png) |
+| ![Dashboard view 3](assets/dashboard_3.png) | ![Dashboard view 4](assets/dashboard_4.png) |
 
 ## Architecture diagram
 ![Infrastructure flowchart](assets/infrastructure_1.png)
