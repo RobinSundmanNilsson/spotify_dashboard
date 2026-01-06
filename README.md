@@ -41,18 +41,26 @@ This repo shows a full data platform from API to dashboard. It is meant to be si
 - Spotify API creds available as environment variables:
   - `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET`, `SPOTIPY_REDIRECT_URI`
 
-## Local quickstart
+## Local vs Azure
+- Docker Compose is for local runs only.
+- Terraform is for Azure deploys.
+- Same code, different storage:
+  - Local: `./data_warehouse/spotify.duckdb`
+  - Azure: Azure Files mounted at `/mnt/data/spotify.duckdb`
+
+## Local (Docker Compose)
 1) Create a `.env` in the repo root (KEY=VALUE):
 ```
 SPOTIPY_CLIENT_ID=...
 SPOTIPY_CLIENT_SECRET=...
 SPOTIPY_REDIRECT_URI=https://localhost:8501
 ```
-2) (Optional) Run with Docker Compose:
+2) Run:
 ```
 docker-compose up --build
 ```
-Dagster UI: localhost:3000, Streamlit: localhost:8501, DuckDB file: `./mnt/data/spotify.duckdb`.
+Dagster UI: localhost:3000, Streamlit: localhost:8501, DuckDB file (local): `./data_warehouse/spotify.duckdb`.
+Compose mounts `./data_warehouse` to `/mnt/data` and uses `iac/assets/profiles.yml` for dbt.
 
 ## Deploy to Azure with Terraform
 From `iac/`:
@@ -69,16 +77,6 @@ is_windows            = false            # set true on Windows to use bash.exe f
 ```
 terraform init
 terraform plan
-terraform apply
-```
-
-If you keep secrets in `.env`, export them and use TF_VAR:
-```
-set -a
-source ../.env   # exports SPOTIPY_* locally
-set +a
-TF_VAR_spotipy_client_id="$SPOTIPY_CLIENT_ID" \
-TF_VAR_spotipy_client_secret="$SPOTIPY_CLIENT_SECRET" \
 terraform apply
 ```
 
@@ -107,7 +105,8 @@ Outputs to note after apply:
 - `iac/` - Terraform definitions
 
 ## Operating notes
-- DuckDB path is fixed to `/mnt/data/spotify.duckdb` (backed by Azure Files).
+- DuckDB path inside containers is `/mnt/data/spotify.duckdb` (local uses a bind mount, Azure uses Azure Files).
+- `profiles.yml` for dbt lives in `iac/assets/profiles.yml` and is uploaded to Azure Files during Terraform apply. It reads `DUCKDB_PATH`.
 - Spotipy credentials are passed via Terraform `TF_VAR_spotipy_*` and are not stored in code or images.
 - If you change code, run `terraform apply` again to rebuild the images.
 - Make sure Docker Desktop is running before `terraform apply` (buildx step).
