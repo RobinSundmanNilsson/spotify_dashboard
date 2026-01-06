@@ -1,49 +1,61 @@
 # Spotify Data Platform (Azure)
 
-Modern end‑to‑end pipeline for Spotify analytics: extract with Spotipy + DLT, orchestrate with Dagster, transform with dbt into DuckDB, and serve insights with a Streamlit dashboard. Everything is containerized and provisioned to Azure via Terraform.
+End-to-end pipeline for Spotify analytics. Spotipy + DLT fetch data, Dagster runs the jobs, dbt builds tables in DuckDB, and Streamlit shows the dashboard. Everything runs in containers and can be deployed to Azure with Terraform.
 
 ## Project overview
-This repository is a full-stack data platform demo focused on reproducibility and clarity. It shows how to go from a public API to curated analytics and a live dashboard using modern data tooling, all packaged in containers and deployed with infrastructure as code. The result is a single, repeatable workflow that runs locally or in Azure.
+This repo shows a full data platform from API to dashboard. It is meant to be simple, clear, and repeatable. You can run it locally or deploy it to Azure.
+
+## Dashboard screenshots
+![Dashboard view 1](assets/dashboard_1.png)
+
+![Dashboard view 2](assets/dashboard_2.png)
+
+![Dashboard view 3](assets/dashboard_3.png)
+
+![Dashboard view 4](assets/dashboard_4.png)
+
+## Architecture diagram
+![Infrastructure flowchart](assets/infrastructure_1.png)
 
 ## Data flow
-1) Ingest Spotify data with Spotipy + DLT into a shared DuckDB file.
-2) Transform and model tables with dbt inside the same DuckDB file.
-3) Serve the curated tables through a Streamlit dashboard.
-4) Dagster schedules and coordinates the ingest and dbt runs.
+1) Fetch Spotify data with Spotipy + DLT and store it in DuckDB.
+2) Use dbt to clean and shape the tables.
+3) Streamlit reads the tables for the dashboard.
+4) Dagster runs and schedules the jobs.
 
 ## Azure architecture
-- **ACR** stores the pipeline and dashboard images built on apply.
+- **ACR** stores the Docker images.
 - **ACI** runs the Dagster pipeline container.
-- **Azure Files** hosts the DuckDB file and dbt profiles and is mounted into both services.
+- **Azure Files** stores the DuckDB file and dbt profiles and mounts them into both services.
 - **Azure Web App** runs the Streamlit dashboard container.
 
-## What’s inside
-- **Extraction**: Spotipy + DLT fetch tracks/artists, cached into DuckDB.
-- **Orchestration**: Dagster (container) runs jobs and exposes the Dagster UI.
-- **Transform**: dbt models (DuckDB target) materialize curated tables.
-- **Serve**: Streamlit dashboard (container) reads `/mnt/data/spotify.duckdb`.
-- **Infra as Code**: Terraform builds ACR, Azure Files share, ACI for Dagster, and Azure Web App for the dashboard. Docker images are built and pushed as part of apply.
+## What's inside
+- **Extraction**: Spotipy + DLT fetch tracks and artists and store them in DuckDB.
+- **Orchestration**: Dagster runs the jobs and provides the Dagster UI.
+- **Transform**: dbt builds clean tables in DuckDB.
+- **Serve**: The Streamlit dashboard reads from `/mnt/data/spotify.duckdb`.
+- **Infra as Code**: Terraform creates the Azure resources and builds/pushes the Docker images.
 
 ## Prerequisites
-- Docker Desktop (buildx enabled) and logged in locally.
-- Python 3.11+ (for Terraform wrappers and any local tooling).
-- Azure CLI (`az login` already done).
+- Docker Desktop (buildx enabled, logged in).
+- Python 3.11+ for local tooling.
+- Azure CLI (`az login`).
 - Terraform CLI.
 - Spotify API creds available as environment variables:
   - `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET`, `SPOTIPY_REDIRECT_URI`
 
 ## Local quickstart
-1) Create a `.env` in repo root (KEY=VALUE):
+1) Create a `.env` in the repo root (KEY=VALUE):
 ```
 SPOTIPY_CLIENT_ID=...
 SPOTIPY_CLIENT_SECRET=...
 SPOTIPY_REDIRECT_URI=https://localhost:8501
 ```
-2) (Optional) Run locally with Docker Compose:
+2) (Optional) Run with Docker Compose:
 ```
 docker-compose up --build
 ```
-Dagster UI will be on localhost:3000, Streamlit on localhost:8501, DuckDB lives under `./mnt/data/spotify.duckdb`.
+Dagster UI: localhost:3000, Streamlit: localhost:8501, DuckDB file: `./mnt/data/spotify.duckdb`.
 
 ## Deploy to Azure with Terraform
 From `iac/`:
@@ -51,10 +63,10 @@ From `iac/`:
 ```
 spotipy_client_id     = "..."
 spotipy_client_secret = "..."
-subscription_id       = "..."           # recommended to avoid the wrong subscription
-location              = "swedencentral" # change region if needed; changing it replaces resources
+subscription_id       = "..."            # avoid the wrong subscription
+location              = "swedencentral"  # changing region replaces resources
 prefix_app_name       = "spotifyproject" # optional
-is_windows            = false           # set true on Windows to use bash.exe for local-exec
+is_windows            = false            # set true on Windows to use bash.exe for local-exec
 ```
 2) Initialize and apply:
 ```
@@ -63,7 +75,7 @@ terraform plan
 terraform apply
 ```
 
-If you prefer to keep secrets in `.env`, you can still export them and use TF_VAR:
+If you keep secrets in `.env`, export them and use TF_VAR:
 ```
 set -a
 source ../.env   # exports SPOTIPY_* locally
@@ -74,31 +86,31 @@ terraform apply
 ```
 
 What apply does:
-- Builds/pushes two images to ACR (`spotifyprojectcr<rand>.azurecr.io`): `spotifyproject-pipeline` and `spotifyproject-dashboard`.
-- Provisions Azure File share and mounts it to `/mnt/data` in both containers.
-- Spins up Dagster in ACI and Streamlit in Azure Web App pointing at the pushed images.
+- Builds and pushes two images to ACR (`spotifyprojectcr<rand>.azurecr.io`): `spotifyproject-pipeline` and `spotifyproject-dashboard`.
+- Creates an Azure Files share and mounts it to `/mnt/data` in both containers.
+- Starts Dagster in ACI and the Streamlit app in Azure Web App.
 
 Outputs to note after apply:
-- `dagster_url` – Dagster UI (run/monitor jobs)
-- `dashboard_url` – Streamlit app
-- `pipeline_container_group_name` – ACI name for troubleshooting
+- `dagster_url` - Dagster UI for running/monitoring jobs
+- `dashboard_url` - Streamlit app
+- `pipeline_container_group_name` - ACI name for troubleshooting
 
 ## Dagster usage
-- Open `dagster_url` and enable the two automations (ingest_spotify_schedule & trigger_dbt_after_ingest) defined for the project.
-- Manually materialize `load_spotify_to_duckdb` once.
-- After that run, the remaining assets should materialize automatically.
+- Open `dagster_url` and enable the two automations: `ingest_spotify_schedule` and `trigger_dbt_after_ingest`.
+- Run `load_spotify_to_duckdb` once.
+- After that, the rest should run automatically.
 
 ## Project layout
-- `dockerfile.dwh` – Dagster/DLT/dbt image
-- `dockerfile.dashboard` – Streamlit image
-- `data_extract_load/` – Spotify ingestion logic (lazy Spotipy init)
-- `dbt_spotify_duckdb/` – dbt models
-- `orchestration/` – Dagster definitions and assets
-- `dashboard/` – Streamlit app and data connector
-- `iac/` – Terraform definitions
+- `dockerfile.dwh` - Docker image for Dagster/DLT/dbt
+- `dockerfile.dashboard` - Docker image for Streamlit
+- `data_extract_load/` - Spotify ingestion code
+- `dbt_spotify_duckdb/` - dbt models
+- `orchestration/` - Dagster definitions and assets
+- `dashboard/` - Streamlit app and data connector
+- `iac/` - Terraform definitions
 
 ## Operating notes
 - DuckDB path is fixed to `/mnt/data/spotify.duckdb` (backed by Azure Files).
-- Spotipy credentials are injected via Terraform `TF_VAR_spotipy_*`; they never live in code or images.
-- If you change code, re‑apply Terraform (images rebuild thanks to triggers on source dirs).
-- Ensure Docker Desktop is running before `terraform apply` (buildx step).
+- Spotipy credentials are passed via Terraform `TF_VAR_spotipy_*` and are not stored in code or images.
+- If you change code, run `terraform apply` again to rebuild the images.
+- Make sure Docker Desktop is running before `terraform apply` (buildx step).
