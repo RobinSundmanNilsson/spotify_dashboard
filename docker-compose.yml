@@ -5,11 +5,17 @@ services:
     platform: linux/amd64
     env_file:
       - .env
+    environment:
+      - DUCKDB_PATH=/mnt/data/spotify.duckdb
+      - DBT_PROFILES_DIR=/root/.dbt
     build:
       context: .
       dockerfile: dockerfile.dwh
     ports:
       - "3000:3000"
+    volumes:
+      - ./data_warehouse:/mnt/data
+      - ./iac/assets/profiles.yml:/root/.dbt/profiles.yml:ro
     # Local tag for the built image (override with PIPELINE_IMAGE if you want to pull from/push to ACR)
     image: ${PIPELINE_IMAGE:-spotifyproject-pipeline:local}
 
@@ -17,10 +23,14 @@ services:
     platform: linux/amd64
     env_file:
       - .env
+    environment:
+      - DUCKDB_PATH=/mnt/data/spotify.duckdb
     build:
       context: .
       dockerfile: dockerfile.dashboard
     ports:
       - "8501:8501"
+    volumes:
+      - ./data_warehouse:/mnt/data:ro
     # Local tag for the built image (override with DASHBOARD_IMAGE if you want to pull from/push to ACR)
     image: ${DASHBOARD_IMAGE:-spotifyproject-dashboard:local}
